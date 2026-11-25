@@ -12,7 +12,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-
+      with:
+        token: ${{ secrets.GH_TOKEN }}
     - name: Set up Git
       run: |
         git config --global user.email "jelvehsaz@gmail.com"
@@ -35,4 +36,4 @@ jobs:
         echo "Commit made at $(date) with sticker: ${{ env.STICKER }}" >> commit-log.txt
         git add commit-log.txt
         git commit -m "For You: ${{ env.STICKER }}"
-        git push https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+                git push origin HEAD:main
