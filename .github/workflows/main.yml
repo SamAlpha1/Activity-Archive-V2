@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: activity-archive-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   commit:
     runs-on: ubuntu-latest
@@ -23,10 +27,44 @@ jobs:
           git config user.name "S@m88705626"
           git config user.email "jelvehsaz@gmail.com"
 
+      - name: Select Random Sticker
+        id: random_sticker
+        shell: bash
+        run: |
+          if [[ ! -s stickers.txt ]]; then
+            echo "stickers.txt is missing or empty."
+            exit 1
+          fi
+
+          mapfile -t stickers < stickers.txt
+          stickers=("${stickers[@]}")
+          if (( ${#stickers[@]} == 0 )); then
+            echo "No stickers were found."
+            exit 1
+          fi
+
+          sticker="${stickers[$((RANDOM % ${#stickers[@]}))]}"
+          if [[ -z "$sticker" ]]; then
+            echo "The selected sticker is empty."
+            exit 1
+          fi
+
+          echo "STICKER=$sticker" >> "$GITHUB_ENV"
+
+      - name: Pull latest changes
+        run: |
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+
       - name: Make a commit
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          git add .
-          git commit -m "Automated update: $(date -u '+%Y-%m-%d %H:%M:%S')" || echo "No changes to commit"
-          git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "GH_TOKEN secret is missing."
+            exit 1
+          fi
+
+          echo "Commit made at $(date -u '+%a %b %d %H:%M:%S UTC %Y') with sticker: ${STICKER}" >> commit-log.txt
+          git add commit-log.txt
+          git commit -m "For You: ${STICKER}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
